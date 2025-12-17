@@ -349,7 +349,7 @@
       ];
 
       const selectedMas = maConfigs.filter(cfg => isChecked(cfg.chk));
-      const selectedSeries = seriesList.filter(s => isChecked(s.chk) && !["TI_10min","GustFactor"].includes(s.key));
+      const selectedSeries = seriesList.filter(s => !["TI_10min","GustFactor"].includes(s.key));
       const maCache = {};
 
       selectedMas.forEach(cfg => {
@@ -379,7 +379,7 @@
             yaxis: s.axis,
             line: isMarkers ? undefined : {color, width, dash},
             marker: isMarkers ? (s.marker ? {...s.marker, color} : {color}) : {color:"rgba(0,0,0,0)"},
-            visible: true,
+            visible: isChecked(s.chk),
             ...hoverNone
           });
         });

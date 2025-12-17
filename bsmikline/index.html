@@ -220,8 +220,6 @@
       const traces = [];
       const activeWinMin = getActiveWindowMinutes();
       const windSelected = isChecked("ws100") || isChecked("ws69") || isChecked("ws38");
-      const showBox = isChecked("ma10") && isChecked("ws100");
-      const stats100 = showBox ? rollingStats(d["WS_100"], t, activeWinMin) : null;
 
       const maMap = {};
       maMap[10] = d["MA_10min"];
@@ -252,11 +250,9 @@
         });
       });
 
-      const cd100 = showBox ? buildCustomData(d["WS_100"], stats100, activeMA) : null;
-
       const hoverNone = {hovertemplate:"<extra></extra>", hoverinfo:"skip", hoverlabel:{bgcolor:"rgba(0,0,0,0)", bordercolor:"rgba(0,0,0,0)", font:{color:"rgba(0,0,0,0)"}}};
 
-      traces.push({type:"scattergl", mode:"lines", name:"WS_100", x:t, y:d["WS_100"], customdata: cd100, ...hoverNone, line:{color:axisColors.ws, width:1}, yaxis:"y", visible:isChecked("ws100")});
+      traces.push({type:"scattergl", mode:"lines", name:"WS_100", x:t, y:d["WS_100"], customdata: null, ...hoverNone, line:{color:axisColors.ws, width:1}, yaxis:"y", visible:isChecked("ws100")});
       traces.push({type:"scattergl", mode:"lines", name:"WS_69W", x:t, y:d["WS_69W"], customdata: null, ...hoverNone, line:{color:axisColors.ws69, width:1}, yaxis:"y", visible:isChecked("ws69")});
       traces.push({type:"scattergl", mode:"lines", name:"WS_38W", x:t, y:d["WS_38W"], customdata: null, ...hoverNone, line:{color:axisColors.ws38, width:1}, yaxis:"y", visible:isChecked("ws38")});
 
@@ -372,23 +368,12 @@
         const t = pts[0].x;
         const ts = (t instanceof Date) ? `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}` : String(t);
         const parts = [ts];
-        const showBox = isChecked("ma10") && isChecked("ws100");
         pts.forEach(p => {
           if (p.data.visible === false || p.data.visible === "legendonly") return;
           const name = p.data.name;
           let val = p.y;
-          if (p.customdata && Array.isArray(p.customdata) && p.customdata[p.pointIndex] && p.customdata[p.pointIndex][0] != null) {
-            val = p.customdata[p.pointIndex][0];
-          }
-          if (name === "WS_100" && showBox && p.customdata && p.customdata[p.pointIndex]) {
-            const cd = p.customdata[p.pointIndex];
-            if (cd[1]!=null && cd[2]!=null && cd[3]!=null && cd[4]!=null && cd[5]!=null && val!=null) {
-              parts.push(`${name}: ${val.toFixed(3)} | min ${cd[1].toFixed(3)} | q1 ${cd[2].toFixed(3)} | med ${cd[3].toFixed(3)} | q3 ${cd[4].toFixed(3)} | max ${cd[5].toFixed(3)}`);
-            }
-          } else {
-            if (typeof val === "number") parts.push(`${name}: ${val.toFixed(3)}`);
-            else parts.push(`${name}: ${val}`);
-          }
+          if (typeof val === "number") parts.push(`${name}: ${val.toFixed(3)}`);
+          else parts.push(`${name}: ${val}`);
         });
         hb.textContent = parts.join("  |  ");
         hb.style.visibility = 'visible';

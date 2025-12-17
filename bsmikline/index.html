@@ -278,7 +278,7 @@
         font: {family:"Times New Roman, serif", color:"#e0e0e0"},
         paper_bgcolor:"#000",
         plot_bgcolor:"#000",
-        hovermode:"x unified",
+        hovermode:"closest",
         hoverlabel:{bgcolor:"rgba(0,0,0,0)", bordercolor:"rgba(0,0,0,0)", font:{color:"rgba(0,0,0,0)"}},
         xaxis: {
           title: "Time",
@@ -286,8 +286,8 @@
           spikemode:"across",
           spikecolor:"#ffffff",
           spikethickness:1,
-          spikesnap:"cursor",
           spikedash:"dash",
+          spikesnap:"cursor",
           rangeslider:{visible:false},
           gridcolor:"#222",
           zerolinecolor:"#333",
@@ -382,7 +382,9 @@
           }
           if (name === "WS_100" && showBox && p.customdata && p.customdata[p.pointIndex]) {
             const cd = p.customdata[p.pointIndex];
-            parts.push(`${name}: ${val.toFixed(3)} | min ${cd[1].toFixed(3)} | q1 ${cd[2].toFixed(3)} | med ${cd[3].toFixed(3)} | q3 ${cd[4].toFixed(3)} | max ${cd[5].toFixed(3)}`);
+            if (cd[1]!=null && cd[2]!=null && cd[3]!=null && cd[4]!=null && cd[5]!=null && val!=null) {
+              parts.push(`${name}: ${val.toFixed(3)} | min ${cd[1].toFixed(3)} | q1 ${cd[2].toFixed(3)} | med ${cd[3].toFixed(3)} | q3 ${cd[4].toFixed(3)} | max ${cd[5].toFixed(3)}`);
+            }
           } else {
             if (typeof val === "number") parts.push(`${name}: ${val.toFixed(3)}`);
             else parts.push(`${name}: ${val}`);

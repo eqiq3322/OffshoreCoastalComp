@@ -388,7 +388,7 @@
       // TI 和 GustFactor 固定定義，只畫一次不跟隨 MA
       const ti = seriesList.find(s => s.key === "TI_10min");
       const gf = seriesList.find(s => s.key === "GustFactor");
-      if (ti && isChecked(ti.chk)) {
+      if (ti) {
         traces.push({
           type:"scattergl",
           mode:"lines",
@@ -398,11 +398,11 @@
           y:d[ti.key],
           yaxis: ti.axis,
           line:{color:ti.baseColor, width:1, dash:"dot"},
-          visible:true,
+          visible:isChecked(ti.chk),
           ...hoverNone
         });
       }
-      if (gf && isChecked(gf.chk)) {
+      if (gf) {
         traces.push({
           type:"scattergl",
           mode:"markers",
@@ -412,7 +412,7 @@
           y:d[gf.key],
           yaxis: gf.axis,
           marker:{color:gf.baseColor, size:3},
-          visible:true,
+          visible:isChecked(gf.chk),
           ...hoverNone
         });
       }

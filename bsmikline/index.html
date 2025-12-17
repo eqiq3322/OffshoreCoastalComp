@@ -546,18 +546,27 @@
         // wind speed tag (y-axis, use first y-axis point)
         const axisY = gd._fullLayout && gd._fullLayout.yaxis;
         const offsetY = axisY && axisY._offset ? axisY._offset : 0;
-        if (axisY && cy !== undefined) {
-          const plotY = cy - rect.top - offsetY;
-          const yVal = axisY.p2l(plotY);
-          const py = axisY.l2p(yVal) + offsetY + rect.top;
-          if (yVal != null && !Number.isNaN(yVal) && py != null) {
-            tagVal.style.display = "block";
-            tagVal.textContent = `${yVal.toFixed(3)}`;
-            tagVal.style.left = `${rect.left + 10}px`;
-            tagVal.style.top = `${py - 10}px`;
-          } else {
-            tagVal.style.display = "none";
+        const ptY = pts.find(p => p.data.yaxis === "y");
+        let py = null;
+        let yVal = null;
+        if (axisY && ptY && ptY.y != null) {
+          yVal = ptY.y;
+          const pxCoord = (ptY.ypx !== undefined) ? ptY.ypx : null;
+          if (pxCoord !== null) {
+            py = pxCoord + offsetY + rect.top;
+          } else if (cy !== undefined) {
+            py = cy;
           }
+        } else if (axisY && cy !== undefined) {
+          const plotY = cy - rect.top - offsetY;
+          yVal = axisY.p2l(plotY);
+          py = axisY.l2p(yVal) + offsetY + rect.top;
+        }
+        if (py !== null && yVal !== null && !Number.isNaN(yVal)) {
+          tagVal.style.display = "block";
+          tagVal.textContent = `${yVal.toFixed(3)}`;
+          tagVal.style.left = `${rect.left + 10}px`;
+          tagVal.style.top = `${py - 10}px`;
         } else {
           tagVal.style.display = "none";
         }

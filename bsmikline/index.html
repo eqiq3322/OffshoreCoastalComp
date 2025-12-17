@@ -533,7 +533,6 @@
         const rect = gd.getBoundingClientRect();
         const ev = data.event || {};
         const cx = ev.clientX;
-        const cy = ev.clientY;
         // time tag along x-axis
         if (cx !== undefined) {
           tagTime.style.display = "block";
@@ -546,11 +545,12 @@
         }
         // wind speed tag (y-axis, use first y-axis point)
         const pY = pts.find(p => p.data.yaxis === "y");
-        if (pY && cy !== undefined) {
+        if (pY && (pY.ypx !== undefined || ev.clientY !== undefined)) {
           tagVal.style.display = "block";
           tagVal.textContent = `${pY.y != null ? pY.y.toFixed(3) : ""}`;
           tagVal.style.left = `${rect.left + 10}px`;
-          tagVal.style.top = `${cy - 10}px`;
+          const py = pY.ypx !== undefined ? pY.ypx + rect.top : ev.clientY;
+          tagVal.style.top = `${py - 10}px`;
         } else {
           tagVal.style.display = "none";
         }

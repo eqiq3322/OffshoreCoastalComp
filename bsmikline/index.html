@@ -5,12 +5,30 @@
   <title>BSMI K-Line Viewer</title>
   <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
   <style>
-    body { font-family: "Times New Roman", serif; margin: 0; padding: 0; background: #000; color: #e0e0e0; }
-    #controls { padding: 10px; border-bottom: 1px solid #444; background: #111; }
+    html, body { height: 100%; }
+    body { font-family: "Times New Roman", serif; margin: 0; padding: 0; background: #000; color: #e0e0e0; display: flex; flex-direction: column; position: relative; }
+    #controls { padding: 10px; border-bottom: 1px solid #444; background: #111; flex: 0 0 auto; }
     .section { margin-bottom: 8px; }
-    #chart { width: 100%; height: 95vh; }
+    #chart { width: 100%; flex: 1 1 auto; min-height: 0; }
     label { margin-right: 10px; }
     .color-dot { display:inline-block; width:12px; height:12px; border-radius:2px; margin-left:4px; vertical-align:middle; }
+    #hoverbar {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      top: 60px;
+      padding: 4px 0;
+      color: #ff4444;
+      font-size: 16px;
+      background: transparent;
+      visibility: hidden;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+      line-height: 20px;
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
@@ -31,18 +49,19 @@
       <div style="margin-top:6px;">
         <strong>Series:</strong>
         <label><input type="checkbox" class="toggle" data-trace="ws100" checked> <span class="color-dot" style="background:#1f77b4"></span> WS_100</label>
-        <label><input type="checkbox" class="toggle" data-trace="ws69"> <span class="color-dot" style="background:#8c564b"></span> WS_69W</label>
-        <label><input type="checkbox" class="toggle" data-trace="ws38"> <span class="color-dot" style="background:#bcbd22"></span> WS_38W</label>
-        <label><input type="checkbox" class="toggle" data-trace="wd97" checked> <span class="color-dot" style="background:#7f7f7f"></span> WD_97</label>
-        <label><input type="checkbox" class="toggle" data-trace="wd35"> <span class="color-dot" style="background:#999"></span> WD_35</label>
+        <label><input type="checkbox" class="toggle" data-trace="ws69"> <span class="color-dot" style="background:#00c1b2"></span> WS_69W</label>
+        <label><input type="checkbox" class="toggle" data-trace="ws38"> <span class="color-dot" style="background:#f5d300"></span> WS_38W</label>
+        <label><input type="checkbox" class="toggle" data-trace="wd97" checked> <span class="color-dot" style="background:#ff8c00"></span> WD_97</label>
+        <label><input type="checkbox" class="toggle" data-trace="wd35"> <span class="color-dot" style="background:#f5c49e"></span> WD_35</label>
         <label><input type="checkbox" class="toggle" data-trace="at"> <span class="color-dot" style="background:#bcbd22"></span> AT_95</label>
         <label><input type="checkbox" class="toggle" data-trace="rh"> <span class="color-dot" style="background:#d62728"></span> RH_95</label>
-        <label><input type="checkbox" class="toggle" data-trace="bp"> <span class="color-dot" style="background:#ffa500"></span> BP_93</label>
+        <label><input type="checkbox" class="toggle" data-trace="bp"> <span class="color-dot" style="background:#9b59b6"></span> BP_93</label>
         <label><input type="checkbox" class="toggle" data-trace="ti"> <span class="color-dot" style="background:#e377c2"></span> TI_10min</label>
         <label><input type="checkbox" class="toggle" data-trace="gust"> <span class="color-dot" style="background:#7f7f7f"></span> GustFactor</label>
       </div>
     </div>
   </div>
+  <div id="hoverbar"></div>
   <div id="chart"></div>
 
   <script>
@@ -58,8 +77,12 @@
       ma6h: "#9467bd",
       ma1m: "#17becf",
       rh: "#d62728",
-      bp: "#ffa500",
-      wd: "#7f7f7f",
+      bp: "#9b59b6",
+      wd: "#ff8c00",
+      wd35: "#f5c49e",
+      wdGrey: "#7f7f7f",
+      ws69: "#00c1b2",
+      ws38: "#f5d300",
       at: "#bcbd22",
       ti: "#e377c2",
       gust: "#7f7f7f"
@@ -196,6 +219,7 @@
       const t = d["TIMESTAMP"];
       const traces = [];
       const activeWinMin = getActiveWindowMinutes();
+      const windSelected = isChecked("ws100") || isChecked("ws69") || isChecked("ws38");
       const stats100 = rollingStats(d["WS_100"], t, activeWinMin);
       const stats69 = rollingStats(d["WS_69W"], t, activeWinMin);
       const stats38 = rollingStats(d["WS_38W"], t, activeWinMin);
@@ -222,9 +246,10 @@
           x: t,
           y: d[col],
           hoverinfo:"skip",
-          line: {color: axisColors[colorKey], width: 1.5},
+          line: {color: "rgba(0,0,0,0)", width: 0.1},
+          opacity: 0,
           yaxis: "y",
-          visible: isChecked(toggleKey)
+          visible: false
         });
       });
 
@@ -232,19 +257,21 @@
       const cd69 = buildCustomData(d["WS_69W"], stats69, activeMA);
       const cd38 = buildCustomData(d["WS_38W"], stats38, activeMA);
 
-      traces.push({type:"scattergl", mode:"lines", name:"WS_100", x:t, y:d["WS_100"], customdata: cd100, hovertemplate:"WS_100 MA %{customdata[0]:.3f}<br>min %{customdata[1]:.3f}<br>q1 %{customdata[2]:.3f}<br>median %{customdata[3]:.3f}<br>q3 %{customdata[4]:.3f}<br>max %{customdata[5]:.3f}<extra></extra>", line:{color:axisColors.ws, width:1}, yaxis:"y", visible:isChecked("ws100")});
-      traces.push({type:"scattergl", mode:"lines", name:"WS_69W", x:t, y:d["WS_69W"], customdata: cd69, hovertemplate:"WS_69W MA %{customdata[0]:.3f}<br>min %{customdata[1]:.3f}<br>q1 %{customdata[2]:.3f}<br>median %{customdata[3]:.3f}<br>q3 %{customdata[4]:.3f}<br>max %{customdata[5]:.3f}<extra></extra>", line:{color:"#8c564b", width:1}, yaxis:"y", visible:isChecked("ws69")});
-      traces.push({type:"scattergl", mode:"lines", name:"WS_38W", x:t, y:d["WS_38W"], customdata: cd38, hovertemplate:"WS_38W MA %{customdata[0]:.3f}<br>min %{customdata[1]:.3f}<br>q1 %{customdata[2]:.3f}<br>median %{customdata[3]:.3f}<br>q3 %{customdata[4]:.3f}<br>max %{customdata[5]:.3f}<extra></extra>", line:{color:"#bcbd22", width:1}, yaxis:"y", visible:isChecked("ws38")});
+      const hoverNone = {hovertemplate:"<extra></extra>", hoverinfo:"skip", hoverlabel:{bgcolor:"rgba(0,0,0,0)", bordercolor:"rgba(0,0,0,0)", font:{color:"rgba(0,0,0,0)"}}};
 
-      traces.push({type:"scattergl", mode:"lines", name:"WD_97", x:t, y:breakDirection(d["WD_97"]), line:{color:axisColors.wd, width:1}, yaxis:"y4", visible:isChecked("wd97")});
-      traces.push({type:"scattergl", mode:"lines", name:"WD_35", x:t, y:breakDirection(d["WD_35"]), line:{color:"#999", width:1}, yaxis:"y4", visible:isChecked("wd35")});
+      traces.push({type:"scattergl", mode:"lines", name:"WS_100", x:t, y:d["WS_100"], customdata: cd100, ...hoverNone, line:{color:axisColors.ws, width:1}, yaxis:"y", visible:isChecked("ws100")});
+      traces.push({type:"scattergl", mode:"lines", name:"WS_69W", x:t, y:d["WS_69W"], customdata: cd69, ...hoverNone, line:{color:axisColors.ws69, width:1}, yaxis:"y", visible:isChecked("ws69")});
+      traces.push({type:"scattergl", mode:"lines", name:"WS_38W", x:t, y:d["WS_38W"], customdata: cd38, ...hoverNone, line:{color:axisColors.ws38, width:1}, yaxis:"y", visible:isChecked("ws38")});
 
-      traces.push({type:"scattergl", mode:"lines", name:"AT_95", x:t, y:d["AT_95"], line:{color:axisColors.at, width:1}, yaxis:"y5", visible:isChecked("at")});
-      traces.push({type:"scattergl", mode:"lines", name:"RH_95", x:t, y:d["RH_95"], line:{color:axisColors.rh, width:1}, yaxis:"y2", visible:isChecked("rh")});
-      traces.push({type:"scattergl", mode:"lines", name:"BP_93", x:t, y:d["BP_93"], line:{color:axisColors.bp, width:1}, yaxis:"y3", visible:isChecked("bp")});
+      traces.push({type:"scattergl", mode:"lines", name:"WD_97", x:t, y:breakDirection(d["WD_97"]), ...hoverNone, line:{color:axisColors.wd, width:1}, yaxis:"y4", visible:isChecked("wd97")});
+      traces.push({type:"scattergl", mode:"lines", name:"WD_35", x:t, y:breakDirection(d["WD_35"]), ...hoverNone, line:{color:axisColors.wd35, width:1}, yaxis:"y4", visible:isChecked("wd35")});
 
-      traces.push({type:"scattergl", mode:"lines", name:"TI_10min", x:t, y:d["TI_10min"], line:{color:axisColors.ti, dash:"dot", width:1}, yaxis:"y6", visible:isChecked("ti"), hovertemplate:"TI_10min %{y:.3f}<extra></extra>"});
-      traces.push({type:"scattergl", mode:"markers", marker:{color:axisColors.gust, size:3}, name:"GustFactor", x:t, y:d["GustFactor"], yaxis:"y6", visible:isChecked("gust"), hovertemplate:"GustFactor %{y:.3f}<extra></extra>"});
+      traces.push({type:"scattergl", mode:"lines", name:"AT_95", x:t, y:d["AT_95"], ...hoverNone, line:{color:axisColors.at, width:1}, yaxis:"y5", visible:isChecked("at")});
+      traces.push({type:"scattergl", mode:"lines", name:"RH_95", x:t, y:d["RH_95"], ...hoverNone, line:{color:axisColors.rh, width:1}, yaxis:"y2", visible:isChecked("rh")});
+      traces.push({type:"scattergl", mode:"lines", name:"BP_93", x:t, y:d["BP_93"], ...hoverNone, line:{color:axisColors.bp, width:1}, yaxis:"y3", visible:isChecked("bp")});
+
+      traces.push({type:"scattergl", mode:"lines", name:"TI_10min", x:t, y:d["TI_10min"], ...hoverNone, line:{color:axisColors.ti, dash:"dot", width:1}, yaxis:"y6", visible:isChecked("ti")});
+      traces.push({type:"scattergl", mode:"markers", marker:{color:axisColors.gust, size:3}, name:"GustFactor", x:t, y:d["GustFactor"], yaxis:"y6", visible:isChecked("gust"), ...hoverNone});
 
       return traces;
     }
@@ -259,19 +286,20 @@
           title: "Time",
           showspikes:true,
           spikemode:"across",
-          spikecolor:"#888",
+          spikecolor:"#ff00ff",
           spikethickness:1,
           spikesnap:"cursor",
+          spikedash:"dash",
           rangeslider:{visible:false},
           gridcolor:"#222",
           zerolinecolor:"#333",
         },
-        yaxis: {title: "Wind speed (m/s)", domain:[0.05,0.98], gridcolor:"#222", zerolinecolor:"#333"},
-        yaxis2: {title: "", overlaying:"y", side:"right", position:1.02, anchor:"free", showgrid:false, tickfont:{color:axisColors.rh}, titlefont:{color:axisColors.rh}, showline:false},
-        yaxis3: {title: "", overlaying:"y", side:"right", position:1.08, anchor:"free", showgrid:false, tickfont:{color:axisColors.bp}, titlefont:{color:axisColors.bp}, showline:false},
-        yaxis4: {title: "", overlaying:"y", side:"right", position:1.14, anchor:"free", range:[0,360], showgrid:false, tickfont:{color:axisColors.wd}, titlefont:{color:axisColors.wd}, showline:false},
-        yaxis5: {title: "", overlaying:"y", side:"right", position:1.20, anchor:"free", showgrid:false, tickfont:{color:axisColors.at}, titlefont:{color:axisColors.at}, showline:false},
-        yaxis6: {overlaying:"y", side:"right", position:1.26, anchor:"free", showgrid:false, showticklabels:false, zeroline:false, title:""},
+        yaxis: {title: "Wind speed (m/s)", domain:[0.05,0.98], gridcolor:"#222", zerolinecolor:"#333", showspikes:true, spikemode:"across", spikedash:"dash", spikecolor:"#ff00ff", spikethickness:1, spikesnap:"cursor"},
+        yaxis2: {title: "", overlaying:"y", side:"right", position:1.02, anchor:"free", showgrid:false, tickfont:{color:axisColors.rh}, titlefont:{color:axisColors.rh}, showline:false, showspikes:true, spikemode:"across", spikedash:"dash", spikecolor:"#ff00ff", spikethickness:1, spikesnap:"cursor"},
+        yaxis3: {title: "", overlaying:"y", side:"right", position:1.08, anchor:"free", showgrid:false, tickfont:{color:axisColors.bp}, titlefont:{color:axisColors.bp}, showline:false, showspikes:true, spikemode:"across", spikedash:"dash", spikecolor:"#ff00ff", spikethickness:1, spikesnap:"cursor"},
+        yaxis4: {title: "", overlaying:"y", side:"right", position:1.14, anchor:"free", range:[0,360], showgrid:false, tickfont:{color:axisColors.wd}, titlefont:{color:axisColors.wd}, showline:false, showspikes:true, spikemode:"across", spikedash:"dash", spikecolor:"#ff00ff", spikethickness:1, spikesnap:"cursor"},
+        yaxis5: {title: "", overlaying:"y", side:"right", position:1.20, anchor:"free", showgrid:false, tickfont:{color:axisColors.at}, titlefont:{color:axisColors.at}, showline:false, showspikes:true, spikemode:"across", spikedash:"dash", spikecolor:"#ff00ff", spikethickness:1, spikesnap:"cursor"},
+        yaxis6: {overlaying:"y", side:"right", position:1.26, anchor:"free", showgrid:false, showticklabels:false, zeroline:false, title:"", showspikes:true, spikemode:"across", spikedash:"dash", spikecolor:"#ff00ff", spikethickness:1, spikesnap:"cursor"},
         showlegend: false,
         margin: {l:60, r:220, t:30, b:30},
       };
@@ -283,6 +311,7 @@
         const n = (data["WS_100"] || []).filter(v => v !== null && !Number.isNaN(v)).length;
         const traces = makeTraces(data);
         await Plotly.newPlot("chart", traces, layoutTemplate(), {responsive:true, displaylogo:false});
+        bindHoverbar();
         setStatus(`Loaded ${month} (${n} points)`);
         bindToggles(traces);
       } catch (err) {
@@ -315,7 +344,7 @@
       };
       document.querySelectorAll('.toggle').forEach(cb => {
         cb.onchange = () => {
-          if (["ma10","ma1h","ma6h","ma1mo"].includes(cb.dataset.trace)) {
+          if (["ma10","ma1h","ma6h","ma1mo","ws100","ws69","ws38"].includes(cb.dataset.trace)) {
             const current = document.getElementById("monthSelect").value;
             render(current);
             return;
@@ -326,6 +355,41 @@
             (nameToIdx[name] || []).forEach(i => Plotly.restyle("chart", {visible: visibility}, i));
           });
         };
+      });
+    }
+
+    function bindHoverbar() {
+      const gd = document.getElementById("chart");
+      const hb = document.getElementById("hoverbar");
+      const adjustPos = () => {
+        const ctrl = document.getElementById("controls");
+        const top = ctrl ? ctrl.offsetHeight + 4 : 60;
+        hb.style.top = `${top}px`;
+      };
+      adjustPos();
+      window.addEventListener("resize", adjustPos);
+      gd.on('plotly_hover', (data) => {
+        if (!data || !data.points || !data.points.length) { hb.style.visibility = 'hidden'; hb.textContent=''; return; }
+        const pts = data.points;
+        const t = pts[0].x;
+        const ts = (t instanceof Date) ? `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}` : String(t);
+        const parts = [ts];
+        pts.forEach(p => {
+          if (p.data.visible === false || p.data.visible === "legendonly") return;
+          const name = p.data.name;
+          let val = p.y;
+          if (p.customdata && Array.isArray(p.customdata) && p.customdata[p.pointIndex] && p.customdata[p.pointIndex][0] != null) {
+            val = p.customdata[p.pointIndex][0];
+          }
+          if (typeof val === "number") parts.push(`${name}: ${val.toFixed(3)}`);
+          else parts.push(`${name}: ${val}`);
+        });
+        hb.textContent = parts.join("  |  ");
+        hb.style.visibility = 'visible';
+      });
+      gd.on('plotly_unhover', () => {
+        hb.textContent = '';
+        hb.style.visibility = 'hidden';
       });
     }
 
